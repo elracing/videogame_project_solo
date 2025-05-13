@@ -11,6 +11,8 @@ public abstract class GameBase extends Applet implements Runnable, KeyListener {
     Image offScreen;
     Graphics offScreen_pen;
     Thread t;
+	int screenWidth = 2736;
+	int screenHeight = 1824;
     static boolean[] pressing = new boolean[1024];
     public static final int UP = 38;
     public static final int DN = 40;
@@ -80,7 +82,7 @@ public abstract class GameBase extends Applet implements Runnable, KeyListener {
     public abstract void initialize();
 
     public void init() {
-        this.offScreen = this.createImage(2736, 1824);
+        this.offScreen = this.createImage(screenWidth, screenHeight);
         this.offScreen_pen = this.offScreen.getGraphics();
         this.initialize();
         this.addKeyListener(this);
@@ -104,9 +106,21 @@ public abstract class GameBase extends Applet implements Runnable, KeyListener {
     }
 
     public void update(Graphics pen) {
-        this.offScreen_pen.clearRect(0, 0, 2736, 1824);
-        this.paint(this.offScreen_pen);
-        pen.drawImage(this.offScreen, 0, 0, (ImageObserver)null);
+    	int w = getWidth();
+        int h = getHeight();
+
+        if (w <= 0 || h <= 0) return;
+
+        if (offScreen == null || offScreen.getWidth(null) != w || offScreen.getHeight(null) != h) {
+            offScreen = createImage(w, h);
+            offScreen_pen = offScreen.getGraphics();
+        }
+
+        offScreen_pen.setColor(getBackground());
+        offScreen_pen.fillRect(0, 0, w, h); //fills, reduces artifacts
+
+        paint(offScreen_pen);
+        pen.drawImage(offScreen, 0, 0, (ImageObserver) null);
     }
 
     public void keyPressed(KeyEvent e) {

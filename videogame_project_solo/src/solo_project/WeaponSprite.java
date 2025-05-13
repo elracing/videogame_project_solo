@@ -25,19 +25,15 @@ public class WeaponSprite extends Rect{
 		
 		super(x, y, w ,h);
 		
-		//animation = new WeaponAnimation[4];
-		
-		//for(int i = 1; i < 4; i++) {
 			
 			animation = new WeaponAnimation(name, numFrames , duration);
 			
-		//}
 		
 																	
 	}
 	
 
-	public void draw(Graphics pen) {
+	public void draw(Graphics pen, int camX, int camY) {
 		Graphics2D g2d = (Graphics2D) pen; //used to transform images
 		AffineTransform old = g2d.getTransform(); 
 		
@@ -45,22 +41,22 @@ public class WeaponSprite extends Rect{
 		
 		
 	    if (current_pose == RT) {
-	        g2d.drawImage(img, x, y, w, h, null);
+	        g2d.drawImage(img, x - camX, y - camY, w, h, null);
 	    }
 
 	    if (current_pose == LT) {
-	        g2d.drawImage(img, x + w, y, -w, h, null); // mirror horizontally
+	        g2d.drawImage(img, x + w - camX, y - camY, -w, h, null); // mirror horizontally
 	    }
 
 	    if (current_pose == UP) {
-	        g2d.translate(x + w / 2, y + h / 2); // move to center
+	        g2d.translate(x - camX + w / 2, y - camY + h / 2); // move to center
 	        g2d.rotate(Math.toRadians(-90));     // rotate -90 degrees
 	        g2d.drawImage(img, -w / 2, -h / 2, w, h, null); // draw centered
 	        g2d.setTransform(old); // reset
 	    }
 
 	    if (current_pose == DN) {
-	        g2d.translate(x + w / 2, y + h / 2); // move to center
+	        g2d.translate(x - camX + w / 2, y - camY + h / 2); // move to center
 	        g2d.rotate(Math.toRadians(90));     // rotate 90 degrees
 	        g2d.drawImage(img, -w / 2, -h / 2, w, h, null); // draw centered
 	        g2d.setTransform(old); // reset

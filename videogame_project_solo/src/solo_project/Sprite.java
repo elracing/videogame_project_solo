@@ -33,14 +33,14 @@ public class Sprite extends Rect{
 		}
 		
 
-		public void draw(Graphics pen) {
+		public void draw(Graphics pen, int camX, int camY) {
 			
 			if(moving) {
-				pen.drawImage(animation[current_pose].nextImage(), x, y, w, h, null);
+				pen.drawImage(animation[current_pose].nextImage(), x - camX, y - camY, w, h, null);
 			}
 			
 			else {
-				pen.drawImage(animation[current_pose].stillImage(), x, y, w, h,  null);
+				pen.drawImage(animation[current_pose].stillImage(), x - camX, y -camY, w, h,  null);
 				
 				moving = false;
 			}

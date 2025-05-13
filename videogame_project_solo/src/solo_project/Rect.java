@@ -132,8 +132,8 @@ public class Rect {
         return mx > this.x && mx < this.x + this.w && my > this.y && my < this.y + this.h;
     }
     
-    public void draw(Graphics pen) {
-        pen.drawRect(this.x, this.y, this.w, this.h);
+    public void draw(Graphics pen, int camX, int camY) {
+        pen.drawRect(this.x - camX, this.y - camY, this.w, this.h);
     }
 
 
