@@ -18,14 +18,19 @@ public class WeaponSprite extends Rect{
 	
 	int current_pose = RT;
 	
+	String weaponName = "";
+	
 	
 	
 	
 	public WeaponSprite (String name, int x, int y, int w, int h, int numFrames, int duration) {
 		
+		
 		super(x, y, w ,h);
 		
-			
+		this.weaponName = name;
+		
+		
 			animation = new WeaponAnimation(name, numFrames , duration);
 			
 		

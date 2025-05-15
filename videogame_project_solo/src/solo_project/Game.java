@@ -20,6 +20,7 @@ public class Game extends GameBase{
 
 	public int enemyCount = 0; //count of enemies added
 	public int enemiesThisFrame= 0; //count of enemies to add
+	public int collisionFrameCounter = 0; //tracks frames passed, used to delay collision detection per frame
 	public int weaponsActivated = 1;
 	int camX = 0; //camera x
 	int camY = 0; //camera y
@@ -32,6 +33,7 @@ public class Game extends GameBase{
 	int currentLevel = 1; //character level
 	final int baseLevelUpExpNeeded = 1000; //base exp needed to level up
 	int scaledLevelUpExpNeeded = 1000; //scaled exp requirement
+	boolean levelUpWaiting = false; //flag for prompting level up screen
 	
 	
 	int exp = 0; //tracks experience points, used for upgrades
@@ -47,9 +49,11 @@ public class Game extends GameBase{
 	
 	//bow
 	
-	boolean bowActive = false;
+	boolean bowActive = true;
 	boolean bowAnimating = false; 
 	long bowAnimationEndTime = 0;
+	long bowPositionTimer = 0; //this timer is used to reset the arrow's position towards the player once expired
+	int framesSinceFired = 0; //tracks frames passed when last fired
 	
 	
 	
@@ -62,19 +66,23 @@ public class Game extends GameBase{
 	//weapon variable and list setup
 	ArrayList<WeaponSprite> weapons = new ArrayList<>();
 	Sword sword; 
+	Bow bow;
 
 	
 	
 	//set up weapon timers
 	
 	long swordActivationTimer = currentTime;
-	
+	long bowActivationTimer = currentTime;
 	
 	//set up list containing enemies
 	
 	ArrayList<Enemy> enemies = new ArrayList<>(); //contains all enemies
 	ArrayList<Enemy> enemiesToAdd = new ArrayList<>(); //queue of enemies to add
 	
+	
+	//set up reward list
+	Reward[] levelUpChoices = new Reward[3];
 	
 	//Strings for tiles
 	final int size = 128;
@@ -119,6 +127,16 @@ public class Game extends GameBase{
 	
 	
 	public void inGameLoop() {
+		//first check for level up rewards on freeze screen
+		if (levelUpWaiting) {
+		    if ((pressing[_1]) && levelUpChoices.length > 0) chooseReward(0);
+		    if ((pressing[_2]) && levelUpChoices.length > 1) chooseReward(1);
+		    if ((pressing[_3]) && levelUpChoices.length > 2) chooseReward(2);
+		}
+		
+		
+		if (levelUpWaiting) return; //freezes game when level up is available
+		
 		currentTime = System.currentTimeMillis(); //internal game timer
 		currentTimeSeconds = (int) (currentTime / 1000) -  startTime ;
 		
@@ -150,7 +168,7 @@ public class Game extends GameBase{
 			//enemy spawns
 			
 			synchronized(enemies) { //must synchronize with enemy creation to not create a concurrentModification error
-				if (enemyCount <= 100 && enemiesThisFrame <= 0 && enemiesSpawned <= 100) {
+				if (enemyCount <= 5 && enemiesThisFrame <= 0 && enemiesSpawned <= 20) {
 				    double angle = Math.random() * 2 * Math.PI; // Random angle
 				    double radius = spawnDistance + Math.random() * maxOffset; // Random distance away
 
@@ -162,16 +180,19 @@ public class Game extends GameBase{
 				    case 1:  enemiesToAdd.add(new Skeleton("skeleton", spawnX, spawnY, 100 + (roundNumber * 5), 10, 100, 100));
 				    enemiesThisFrame++;
 				    enemyCount++;
+				    enemiesSpawned++;
 				    break;
 				    
 				    case 2:  enemiesToAdd.add(new Skeleton("skeleton_red_eye", spawnX, spawnY, 200 + (roundNumber * 5), 15, 200, 200));
 				    enemiesThisFrame++;
 				    enemyCount++;
+				    enemiesSpawned++;
 				    break;
 				    
 				    case 3:  enemiesToAdd.add(new Skeleton("skeleton_red", spawnX, spawnY, 300 + (roundNumber * 5), 35, 300, 300));
 				    enemiesThisFrame++;
 				    enemyCount++;
+				    enemiesSpawned++;
 				    break;
 				    }
 				   
@@ -186,7 +207,7 @@ public class Game extends GameBase{
 			enemiesThisFrame = 0;
 			}
 			
-			if (enemiesKilledThisRound == 100) {
+			if (enemiesKilledThisRound >= 20) {
 				enemiesKilledThisRound = 0;
 				enemiesSpawned = 0;
 				roundNumber++;
@@ -199,25 +220,50 @@ public class Game extends GameBase{
 			if(pressing[LT]) {   
 				player.go_LT(6);
 				for (WeaponSprite weapon : weapons) {
+					if(weapon.weaponName == "arrow") {
+						weapon.current_pose = bow.locked_pose;
+					}
+						
+						else	{
 					weapon.current_pose = WeaponSprite.LT;
+					}
 				}
 			}
 			if(pressing[RT])   {
 				player.go_RT(6);
 				for (WeaponSprite weapon : weapons) {
-					weapon.current_pose = WeaponSprite.RT;		
+					
+					if(weapon.weaponName == "arrow") {
+						weapon.current_pose = bow.locked_pose;
+					}
+						
+						else	{
+					weapon.current_pose = WeaponSprite.RT;
+						}
 				}
 			}
 			if(pressing[UP])   {
 				player.go_UP(6);
 				for (WeaponSprite weapon : weapons) {
-					weapon.current_pose = WeaponSprite.UP;			
+					if(weapon.weaponName == "arrow") {
+						weapon.current_pose = bow.locked_pose;
+					}
+						
+						else	{
+					weapon.current_pose = WeaponSprite.UP;	
+						}
 				}
 			}
 			if(pressing[DN])   {
 				player.go_DN(6);
 				for (WeaponSprite weapon : weapons) {
-					weapon.current_pose = WeaponSprite.DN;		
+					if(weapon.weaponName == "arrow") {
+						weapon.current_pose = bow.locked_pose;
+					}
+						
+						else	{
+					weapon.current_pose = WeaponSprite.DN;	
+						}
 				}
 			}
 			
@@ -260,9 +306,21 @@ public class Game extends GameBase{
 			while (iter.hasNext()) {
 				Enemy enemy = iter.next();
 				
+				if(enemy.health <= 0) { //enemy kill counts
+					enemyCount--;
+					enemiesKilledThisRound++;
+					enemiesKilledTotal++;
+					exp += enemy.enemyExp;
+					iter.remove();
+
+					
+				}
+				
 				if (enemy.overlaps(player) && currentTime - player.timeSinceLastHit > 1000) { //calculate damage
 					player.health -= enemy.strength;
 					player.timeSinceLastHit = currentTime;
+					
+					
 					
 					//flash character red
 					
@@ -275,36 +333,45 @@ public class Game extends GameBase{
 						
 				}
 				
-				//enemy collision 
 				
 				//enemy collision
-				for (int i = 0; i < enemies.size(); i++) { //get first enemy
-				    Enemy e1 = enemies.get(i);
-
-				    for (int j = i + 1; j < enemies.size(); j++) { //compare with second enemy
-				        Enemy e2 = enemies.get(j);
-
-				        if (e1.overlaps(e2)) {
-
-				            // Compute the pushback direction
-				            int dx = e1.x - e2.x;
-				            int dy = e1.y - e2.y;
-
-				            // Normalize the direction to avoid diagonal stretching
-				            double dist = Math.sqrt(dx * dx + dy * dy);
-				            
-				            if (dist == 0) dist = 1; // avoid division by zero
-
-				            double pushStrength = 2.0; // how strong the separation is
-
-				            int pushX = (int)((dx / dist) * pushStrength);
-				            int pushY = (int)((dy / dist) * pushStrength);
-
-				            e1.pushBy(pushX, pushY);
-				            e2.pushBy(-pushX, -pushY);
-				        }
-				    }
+				
+				collisionFrameCounter++; //increments frame counter for collision detection
+				
+				if (collisionFrameCounter == 100) {
+					collisionFrameCounter = 0; //reset frame counter for colllisions
+					for (int i = 0; i < enemies.size(); i++) { //get first enemy
+					    Enemy e1 = enemies.get(i);
+	
+					    for (int j = i + 1; j < enemies.size(); j++) { //compare with second enemy
+					        Enemy e2 = enemies.get(j);
+	
+					        if (e1.overlaps(e2)) {
+	
+					            // Compute the pushback direction
+					            int dx = e1.x - e2.x;
+					            int dy = e1.y - e2.y;
+	
+					            // Normalize the direction to avoid diagonal stretching
+					            double dist = Math.sqrt(dx * dx + dy * dy);
+					            
+					            if (dist == 0) dist = 1; // avoid division by zero
+	
+					            double pushStrength = 5.0; // how strong the separation is
+	
+					            int pushX = (int)((dx / dist) * pushStrength);
+					            int pushY = (int)((dy / dist) * pushStrength);
+	
+					            e1.pushBy(pushX, pushY);
+					            e2.pushBy(-pushX, -pushY);
+					            
+					            
+					        }
+					    }
+					}
 				}
+				
+				
 				
 				
 				//calculate damage agaisn't enemies
@@ -343,32 +410,140 @@ public class Game extends GameBase{
 						enemy.health -= sword.Strength;
 					}
 					
-					if(enemy.health <= 0) { //enemy kill counts
-						iter.remove();
-						enemyCount--;
-						enemiesKilledThisRound++;
-						enemiesKilledTotal++;
-						exp += enemy.enemyExp;
-						
-					}
+
 					
 				}
 				
+				//update bow's coordinates
+				
+				if (bowAnimating && !bow.midAir) {
+					
+					//update bow's position timer
+					if (currentTime >= bowPositionTimer) bowPositionTimer = currentTime + bowAnimationEndTime;
+					
+					
+				    // Update bow position and hitbox based on direction
+				    bow.locked_pose = player.current_pose;
+				    bow.fireTime = currentTime;
+				    bow.midAir = true;
+				    framesSinceFired = 0;
+				    
+					
+				    switch (bow.locked_pose) {
+				        case WeaponSprite.RT:
+					            bow.x = player.x + player.w;
+					            bow.y = player.y + player.h / 2 - bow.h / 2;
+					            bow.w = 200;
+					            bow.h = 100;
+					            bow.vx = 6;
+					            bow.vy = 0;
+				            break;
+				        case WeaponSprite.LT:
+					        	bow.x = player.x - 200;
+					        	bow.y = player.y + player.h / 2 - bow.h / 2;
+					        	bow.w = 200;
+					        	bow.h = 100;
+					        	bow.vx = -6;
+					            bow.vy = 0;
+				            break;
+				        case WeaponSprite.UP:
+					        	bow.x = player.x + player.w / 2 - bow.w / 2;
+					        	bow.y = player.y - 200;
+					        	bow.w = 100;
+					        	bow.h = 200;
+					        	bow.vx = 0;
+					            bow.vy = -6;
+				            break;
+				        case WeaponSprite.DN:
+				        	bow.x = player.x + player.w / 2 - bow.w / 2;
+				        	bow.y = player.y + player.h;
+				        	bow.w = 100;
+				        	bow.h = 200;
+				        	bow.vx = 0;
+				            bow.vy = 6;
+				            break;
+				           
+				    }
+				    
+
+					
+				}
+				
+			    if (bow.midAir) {
+				    if (currentTime - bow.fireTime > bow.flightDuration) { //stops arrow when timer expires
+				        bow.midAir = false;
+				    }
+				    
+				    
+				    else {
+				    	
+				    	if (framesSinceFired >= 1){
+				        // Update arrow position
+					        bow.x += bow.vx;
+					        bow.y += bow.vy;
+					  
+				    	}
+				        
+				        framesSinceFired++;
+				        
+				        
+				        
+				        
+					if (bow.overlaps(enemy) || bow.contains(enemy.x, enemy.y)){	
+						enemy.health -= bow.Strength;
+					}
+				
+			    }
 			}
+			    
+				if (currentTime >= bowAnimationEndTime) {  //set animating false
+					bowAnimating = false;
+				}
+		   
+				
+				
+		}
+			
+			
 			
 			//weapon activation checks
 			
 			//level check
-			if (exp >= scaledLevelUpExpNeeded) {
-				//levelUp();
-				scaledLevelUpExpNeeded = baseLevelUpExpNeeded + (roundNumber * 100);
+			if (exp >= scaledLevelUpExpNeeded && (!levelUpWaiting)) {
+				levelUp();
+				
+				
+				
 			}
+			
 			
 		} //end of player death check
 	}
 		
 	
 	
+	public void levelUp() {
+		levelUpWaiting = true;
+		currentLevel++;
+		exp = 0;
+		
+	    
+
+	    
+	   
+	}
+	
+	
+	public void chooseReward(int index) {
+		if (index >= 0 && index < levelUpChoices.length) {
+			levelUpChoices[index].chosenReward1.run();
+			levelUpWaiting = false;
+			
+			//scale exp requirement
+			scaledLevelUpExpNeeded = (int)(baseLevelUpExpNeeded * Math.pow(1.2, currentLevel));
+
+		}
+	}
 	
 
 
@@ -389,6 +564,22 @@ public class Game extends GameBase{
 		
 		
 		if (player!= null) {  //no drawing if player is dead
+			
+			//draw level up menu
+			if (levelUpWaiting) {
+			    pen.setColor(new Color(0, 0, 0, 200)); // semi-transparent overlay
+			    pen.fillRect(0, 0, screenWidth, screenHeight);
+
+			    pen.setColor(Color.WHITE);
+			    pen.setFont(new Font("Arial", Font.BOLD, 40));
+			    pen.drawString("Level Up! Choose a Reward:", screenWidth / 2 - 250, 200);
+
+			    for (int i = 0; i < levelUpChoices.length; i++) {
+			        Reward r = levelUpChoices[i];
+			        pen.drawString((i + 1) + ". " + r.name, screenWidth / 2 - 200, 300 + i * 100);
+			    }
+			}
+			
 			//draw characters
 			player.draw(pen, camX, camY);
 			
@@ -425,19 +616,40 @@ public class Game extends GameBase{
 			}
 			
 			
+			//draw xp bar
+			
+			int expBarWidth = 300;
+			int expBarHeight = 60;
+			
+			//bar background
+			pen.setColor(Color.DARK_GRAY);
+			pen.fillRect(1300, 100, expBarWidth, expBarHeight);
+			
+			//red bar set up
+			
+	        pen.setColor(Color.BLUE);
+	        int expCurrentBarWidth = (int)((exp / (double) scaledLevelUpExpNeeded) * expBarWidth);
+	        pen.fillRect(1300, 100, expCurrentBarWidth, expBarHeight);
+	        
 			//draw player health
 			
 			pen.setColor(Color.RED);
 			pen.setFont(new Font("Arial", Font.BOLD, 36));
 			pen.drawString("HP: " + player.health, 20, 40);
-			pen.drawString(String.valueOf(currentTimeSeconds), 1300, 40); //display timer on top of the screen in seconds
+			
+			
+			//draw game timer
+			pen.drawString(String.valueOf(currentTimeSeconds), 1300, 40); 
 			
 			// draw round number
 			
 			pen.drawString("Round " + roundNumber, 2500, 40);
 			
 			//draw player level
-			pen.drawString("lv " + String.valueOf(currentLevel), 20, 40);
+			pen.drawString("lv " + String.valueOf(currentLevel), 20, 80);
+			
+			//draw total kills
+			pen.drawString("Enemies defeated: " + String.valueOf(enemiesKilledTotal), 20, 120);
 			
 
 			
@@ -478,7 +690,30 @@ public class Game extends GameBase{
 			
 			//Bow
 			
+		if(bowActive) { //check if bow is active
+				
+				if (currentTime >= bowActivationTimer + Bow.weaponDelay) {		
+					bow.animation.reset();
+					bowAnimating = true;
+					bowAnimationEndTime = currentTime + bow.animation.numFrames * bow.animation.duration;
+					bowActivationTimer = currentTime;
+				}
+				
+				if (bowAnimating || bow.midAir) {
+					bow.draw(pen, camX, camY);
+					
+					
+					
+
+				}
+				
+				
+			} //end of bow logic
+			
 		}
+		
+		
+
 		
 		
 		
@@ -508,7 +743,18 @@ public class Game extends GameBase{
 		
 		sword = new Sword(player.x, player.y, 9);  //start with sword as default
 		weapons.add(sword);
-	
+		
+		bow = new Bow(player.x, player.y, 9);
+		weapons.add(bow);
+		
+		//load up reward list
+		
+		 levelUpChoices[0] = (new Reward("Heal 100 HP", () -> player.health += 100));
+		 levelUpChoices[1] = (new Reward("Activate Bow", () -> bowActive = true));
+		 levelUpChoices[2] = (new Reward("Increase Sword Damage", () -> sword.Strength *= 1.10));
+		 levelUpChoices[3] = (new Reward("Decrease Sword delay", () -> sword.weaponDelay *= 0.90));
+		 levelUpChoices[4] = (new Reward("Decrease Bow delay", () -> bow.weaponDelay *= 0.90, () -> bow.fireTime *= 0.90));
+		 levelUpChoices[5] = (new Reward("Increase Bow Strenght", () -> bow.Strength *= 1.10));
 		
 	}
 
