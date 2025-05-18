@@ -93,7 +93,7 @@ public class Game extends GameBase{
 	
 	
 	//set up reward list
-	Reward[] levelUpChoices = new Reward[6];
+	Reward[] levelUpChoices = new Reward[8];
 	Reward[] displayedChoices = new Reward [3];
 	int rewardsRandomized = 0; //tracks reward randomization
 	
@@ -731,12 +731,39 @@ public class Game extends GameBase{
 			
 			//draw level up menu
 			if (levelUpWaiting) {
-				if (rewardsRandomized <= 3){
-				    for (int i = 0; i < displayedChoices.length; i++) {
-						displayedChoices[i] = levelUpChoices[(int)(Math.random() * (levelUpChoices.length))]; //picks 3 random choices from rewards pool
-						rewardsRandomized++;
-				    }
-				}
+				int[] chosenNumbers = {-1, -1, -1}; // Use -1 to signify unused
+			    if (rewardsRandomized <= 3) {
+			        for (int i = 0; i < displayedChoices.length; i++) {
+			            int randomRewardNumber;
+
+			            // Repeat until we find a unique and valid number
+			            while (true) {
+			                randomRewardNumber = (int)(Math.random() * levelUpChoices.length);
+			                boolean alreadyChosen = false;
+
+			                // Reject if it's a duplicate
+			                for (int j = 0; j < i; j++) {
+			                    if (chosenNumbers[j] == randomRewardNumber) {
+			                        alreadyChosen = true;
+			                        break;
+			                    }
+			                }
+
+			                // Reject if it's an already unlocked unique weapon reward
+			                if ((randomRewardNumber == 1 && bowActive) || (randomRewardNumber == 2 && axeActive)) {
+			                    alreadyChosen = true;
+			                }
+
+			                if (!alreadyChosen) {
+			                    break; // Found a valid, unique reward
+			                }
+			            }
+
+			            chosenNumbers[i] = randomRewardNumber;
+			            displayedChoices[i] = levelUpChoices[randomRewardNumber];
+			            rewardsRandomized++;
+			        }
+			    }
 			    	
 			    pen.setColor(new Color(0, 0, 0, 200)); // semi-transparent overlay
 			    pen.fillRect(0, 0, screenWidth, screenHeight);
@@ -832,18 +859,20 @@ public class Game extends GameBase{
 				
 			}
 			
-			for (Enemy enemy : enemies) {
-				if (enemy.flashRed) {
-					int index = (int)(Math.random() * 3); // gives 0, 1, or 2
-					pen.drawImage(Toolkit.getDefaultToolkit().getImage("hit_" + String.valueOf(index) + ".png"), enemy.x - 20 - camX, enemy.y -camY, 100, 100, null); //draws hit indicator on player
+			synchronized(enemies) {
+				for (Enemy enemy : enemies) {
+					if (enemy.flashRed) {
+						int index = (int)(Math.random() * 3); // gives 0, 1, or 2
+						pen.drawImage(Toolkit.getDefaultToolkit().getImage("hit_" + String.valueOf(index) + ".png"), enemy.x - 20 - camX, enemy.y -camY, 100, 100, null); //draws hit indicator on player
+					}
+					
+					if(enemy.flashRed && currentTime > enemy.flashEndTime) { //stop red flash
+						enemy.flashRed = false;
+						
 				}
-				
-				if(enemy.flashRed && currentTime > enemy.flashEndTime) { //stop red flash
-					enemy.flashRed = false;
+						
 					
-			}
-					
-				
+				}
 			}
 			
 			
@@ -971,9 +1000,11 @@ public class Game extends GameBase{
 		 levelUpChoices[0] = (new Reward("Heal 100 HP", () -> player.health += 100));
 		 levelUpChoices[1] = (new Reward("Activate Bow", () -> bowActive = true));
 		 levelUpChoices[2] = (new Reward("Activate Axe", () -> axeActive = true));
-		 levelUpChoices[3] = (new Reward("Increase Sword Damage", () -> sword.Strength *= 1.10));
+		 levelUpChoices[3] = (new Reward("Increase Sword damage", () -> sword.Strength *= 1.10));
 		 levelUpChoices[4] = (new Reward("Decrease Sword delay", () -> sword.weaponDelay *= 0.90));
-		 levelUpChoices[5] = (new Reward("Increase Bow Strength", () -> bow.Strength *= 1.10));
+		 levelUpChoices[5] = (new Reward("Increase Bow strength", () -> bow.Strength *= 1.10));
+		 levelUpChoices[6] = (new Reward("Increase Axe strength", () -> axe.Strength *= 1.10));
+	
 		
 	}
 

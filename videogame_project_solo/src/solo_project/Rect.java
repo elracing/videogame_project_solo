@@ -70,13 +70,7 @@ public class Rect {
 
     }
     
-    public void moveBy(int dx, int dy) {
-        this.old_x = this.x;
-        this.old_y = this.y;
-        this.x += dx;
-        this.y += dy;
-    }
-    
+
     
     public void go_UP(int dy) {
         this.old_y = this.y;
@@ -101,11 +95,6 @@ public class Rect {
     public void pushBy(int dx, int dy) {
         this.x += dx;
         this.y += dy;
-    }
-
-    public void resizeBy(int dw, int dh) {
-        this.w += dw;
-        this.h += dh;
     }
     
     public boolean overlaps(Rect r) {
@@ -132,7 +121,7 @@ public class Rect {
         return mx > this.x && mx < this.x + this.w && my > this.y && my < this.y + this.h;
     }
     
-	public void resize(int w, int h) {
+	public void resize(int w, int h) { //unused, will be used for size rewards
 		this.w = w;
 		this.h = h;
 	}
