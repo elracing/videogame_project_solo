@@ -58,7 +58,7 @@ public class Game extends GameBase{
 	
 	//axe
 	
-	boolean axeActive = false;
+	boolean axeActive = true;
 	boolean axeAnimating = false; 
 	long axeAnimationEndTime = 0;
 	long axePositionTimer = 0; //this timer is used to reset the 's position towards the player once expired
@@ -575,16 +575,19 @@ public class Game extends GameBase{
 			
 			if (axeAnimating && !axe.midAir) {
 				
-				//update bow's position timer
+				//update axe's position timer
 				if (currentTime >= axePositionTimer) axePositionTimer = currentTime + axeAnimationEndTime;
 				
 				
 			    // Update axe position and hitbox based on direction
 			   
+				
 			    axe.throwTime = currentTime;
 			    axe.midAir = true;
 			    framesSinceThrown = 0;
 			    axe.current_pose = player.current_pose;
+			    axe.vy = -18;
+			   
 				
 			    switch (axe.locked_pose) {
 			        case WeaponSprite.RT:
@@ -605,7 +608,7 @@ public class Game extends GameBase{
 				        case WeaponSprite.DN:
 				        	axe.x = player.x + player.w / 2 - axe.w / 2;
 				        	axe.y = player.y + player.h;
-				        	axe.vx = -1;
+				        	axe.vx = 1;
 				            break;
 			           
 			    	}
@@ -615,6 +618,7 @@ public class Game extends GameBase{
 				}
 				
 			    if (axe.midAir) {
+			    	
 				    if (currentTime - axe.throwTime > axe.flightDuration) { //stops arrow when timer expires
 				        axe.midAir = false;
 				    }
@@ -622,14 +626,16 @@ public class Game extends GameBase{
 				    
 				    else {
 				    	
-				    	if (framesSinceThrown >= 10){
-				        // Update axe position, increment vy to positive to create an arch
+				    	//if (framesSinceThrown >= 1){
+				        // Update axe position, increment vy to positive to create an arc
 					        axe.x += axe.vx; 
-					        axe.y += (axe.vy--);
+					        axe.vy += 0.2;
+					        axe.y += (axe.vy);
+					        if (axe.vy > 5) axe.vy = 5;
 					  
-				    	}
+				    	//}
 				        
-				        framesSinceThrown++;
+				       // framesSinceThrown++;
 				        
 				        
 				        
@@ -646,11 +652,11 @@ public class Game extends GameBase{
 			    }
 			}
 			    
-				if (currentTime >= axeAnimationEndTime) {  //set animating false
-					axeAnimating = false;
-					axe.vy = 10;
+			if (currentTime >= axeAnimationEndTime) {  //set animating false
+				axeAnimating = false;
+				
 
-				}
+			}
 		   
 				
 				
