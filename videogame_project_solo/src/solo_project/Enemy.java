@@ -6,6 +6,8 @@ public class Enemy extends Sprite{
 	int strength;
 	int maxHealth;
 	int enemyExp; //amount of exp gained from enemy
+	boolean flashRed;
+	long flashEndTime = 0;
 	
 	static String[] pose = {"up", "dn", "lt", "rt"};
 	

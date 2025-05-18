@@ -19,9 +19,10 @@ public class Game extends GameBase{
 	
 
 	public int enemyCount = 0; //count of enemies added
-	public int enemiesThisFrame= 0; //count of enemies to add
+	public int framesSinceLastSpawn= 0; //frame counter for enemy spawn, used for delays
+	
 	public int collisionFrameCounter = 0; //tracks frames passed, used to delay collision detection per frame
-	public int weaponsActivated = 1;
+	public int weaponsActivated = 1; // tracks weapons activated, TODO used for capping weapons obtained
 	int camX = 0; //camera x
 	int camY = 0; //camera y
 	int roundNumber = 1; //tracks current round
@@ -49,11 +50,19 @@ public class Game extends GameBase{
 	
 	//bow
 	
-	boolean bowActive = true;
+	boolean bowActive = false;
 	boolean bowAnimating = false; 
 	long bowAnimationEndTime = 0;
 	long bowPositionTimer = 0; //this timer is used to reset the arrow's position towards the player once expired
 	int framesSinceFired = 0; //tracks frames passed when last fired
+	
+	//axe
+	
+	boolean axeActive = false;
+	boolean axeAnimating = false; 
+	long axeAnimationEndTime = 0;
+	long axePositionTimer = 0; //this timer is used to reset the 's position towards the player once expired
+	int framesSinceThrown = 0; //tracks frames passed when last fired
 	
 	
 	
@@ -67,6 +76,7 @@ public class Game extends GameBase{
 	ArrayList<WeaponSprite> weapons = new ArrayList<>();
 	Sword sword; 
 	Bow bow;
+	Axe axe;
 
 	
 	
@@ -74,6 +84,7 @@ public class Game extends GameBase{
 	
 	long swordActivationTimer = currentTime;
 	long bowActivationTimer = currentTime;
+	long axeActivationTimer = currentTime;
 	
 	//set up list containing enemies
 	
@@ -82,7 +93,9 @@ public class Game extends GameBase{
 	
 	
 	//set up reward list
-	Reward[] levelUpChoices = new Reward[3];
+	Reward[] levelUpChoices = new Reward[6];
+	Reward[] displayedChoices = new Reward [3];
+	int rewardsRandomized = 0; //tracks reward randomization
 	
 	//Strings for tiles
 	final int size = 128;
@@ -91,7 +104,11 @@ public class Game extends GameBase{
 	
 	
 	String[] map =
-		{	
+		{	    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -115,6 +132,10 @@ public class Game extends GameBase{
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -122,8 +143,15 @@ public class Game extends GameBase{
 				"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 			
 		};
+	
+	//list of wall tiles
+	
+	ArrayList<Rect> walls = new ArrayList<>();
+	boolean wallsBuilt = false; //boolean to trigger wall object creation
 
 
+	//game over flag
+	boolean gameOver = false;
 	
 	
 	public void inGameLoop() {
@@ -145,6 +173,8 @@ public class Game extends GameBase{
 	        Random random = new Random();
 	        double r = random.nextDouble(); // Generates a random number between 0.0 and 1.0, this is used to adjust enemy type spawn rates
 	        int result;
+	        
+	        SoundPlayer.playMusic("game music.wav");
 
 	        if (r < 0.6) { // 60% chance
 	            result = 1;
@@ -162,70 +192,70 @@ public class Game extends GameBase{
 			camY = player.y - screenHeight / 2 + player.h / 2;
 			
 			//distances for spawn
-			int spawnDistance = 500;
+			int spawnDistance = 2000;
 			int maxOffset = 800;
-			
+			int randomDistance = (int)(((spawnDistance) + Math.random() * (maxOffset) + 1)); //random distance using offsets
+			int randomSign = Math.random() < 0.5 ? -1 : 1; // gives either random -1 or 1, used for -y or -x
+
 			//enemy spawns
 			
 			synchronized(enemies) { //must synchronize with enemy creation to not create a concurrentModification error
-				if (enemyCount <= 5 && enemiesThisFrame <= 0 && enemiesSpawned <= 20) {
-				    double angle = Math.random() * 2 * Math.PI; // Random angle
-				    double radius = spawnDistance + Math.random() * maxOffset; // Random distance away
+				if (enemyCount <= 20 && framesSinceLastSpawn > 90) {
 
-				    int spawnX = player.x + (int)(Math.cos(angle) * radius);
-				    int spawnY = player.y + (int)(Math.sin(angle) * radius);
+				    int spawnX = player.x + randomDistance * randomSign; //random x with offsets
+				    int spawnY = player.y + randomDistance * randomSign; //random y with offsets
 				    
 				    switch(result) {
 				    
-				    case 1:  enemiesToAdd.add(new Skeleton("skeleton", spawnX, spawnY, 100 + (roundNumber * 5), 10, 100, 100));
-				    enemiesThisFrame++;
+				    case 1:  enemiesToAdd.add(new Skeleton("skeleton", spawnX, spawnY, 100 * (int)Math.pow(1.3, roundNumber), 10, 100, 100));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
 				    
-				    case 2:  enemiesToAdd.add(new Skeleton("skeleton_red_eye", spawnX, spawnY, 200 + (roundNumber * 5), 15, 200, 200));
-				    enemiesThisFrame++;
+				    case 2:  enemiesToAdd.add(new Skeleton("skeleton_red_eye", spawnX, spawnY, 200 * (int)Math.pow(1.3, roundNumber), 15, 200, 200));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
 				    
-				    case 3:  enemiesToAdd.add(new Skeleton("skeleton_red", spawnX, spawnY, 300 + (roundNumber * 5), 35, 300, 300));
-				    enemiesThisFrame++;
+				    case 3:  enemiesToAdd.add(new Skeleton("skeleton_red", spawnX, spawnY, 300 * (int)Math.pow(1.3, roundNumber), 35, 300, 300));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
 				    }
+				    
+				    framesSinceLastSpawn = 0; //reset spawn frame counter
 				   
 				}
-				
-				
-		
 			
+				
 			
 			enemies.addAll(enemiesToAdd);
 			enemiesToAdd.clear();
-			enemiesThisFrame = 0;
+			framesSinceLastSpawn++;
 			}
 			
-			if (enemiesKilledThisRound >= 20) {
+			if (enemiesKilledThisRound > 20) {
 				enemiesKilledThisRound = 0;
-				enemiesSpawned = 0;
 				roundNumber++;
 			}
 
 		
 			player.moving = false;
 	
-		//change directions, including weapon direction
+		//change directions, including weapon direction & play sound
 			if(pressing[LT]) {   
 				player.go_LT(6);
 				for (WeaponSprite weapon : weapons) {
-					if(weapon.weaponName == "arrow") {
-						weapon.current_pose = bow.locked_pose;
+					if(weapon.weaponName == "arrow") {  //lock bow's direction
+						bow.locked_pose = WeaponSprite.LT;
+					}
+					
+					if(weapon.weaponName == "axe") { //lock axe's direction
+						axe.locked_pose = WeaponSprite.LT;
 					}
 						
 						else	{
-					weapon.current_pose = WeaponSprite.LT;
+					weapon.current_pose = WeaponSprite.LT; //regular weapon pose, changeable during animation
 					}
 				}
 			}
@@ -233,8 +263,12 @@ public class Game extends GameBase{
 				player.go_RT(6);
 				for (WeaponSprite weapon : weapons) {
 					
-					if(weapon.weaponName == "arrow") {
-						weapon.current_pose = bow.locked_pose;
+					if(weapon.weaponName == "arrow") { 
+						bow.locked_pose = WeaponSprite.RT;
+					}
+					
+					if(weapon.weaponName == "axe") {
+						axe.locked_pose = WeaponSprite.RT;
 					}
 						
 						else	{
@@ -246,7 +280,11 @@ public class Game extends GameBase{
 				player.go_UP(6);
 				for (WeaponSprite weapon : weapons) {
 					if(weapon.weaponName == "arrow") {
-						weapon.current_pose = bow.locked_pose;
+						bow.locked_pose = WeaponSprite.UP;
+					}
+					
+					if(weapon.weaponName == "axe") {
+						axe.locked_pose = WeaponSprite.UP;
 					}
 						
 						else	{
@@ -258,10 +296,14 @@ public class Game extends GameBase{
 				player.go_DN(6);
 				for (WeaponSprite weapon : weapons) {
 					if(weapon.weaponName == "arrow") {
-						weapon.current_pose = bow.locked_pose;
+						bow.locked_pose = WeaponSprite.DN;
+					}
+					
+					if(weapon.weaponName == "axe") {
+						axe.locked_pose = WeaponSprite.DN;
 					}
 						
-						else	{
+						else {
 					weapon.current_pose = WeaponSprite.DN;	
 						}
 				}
@@ -319,6 +361,7 @@ public class Game extends GameBase{
 				if (enemy.overlaps(player) && currentTime - player.timeSinceLastHit > 1000) { //calculate damage
 					player.health -= enemy.strength;
 					player.timeSinceLastHit = currentTime;
+					SoundPlayer.playSound("hit_sound.wav");
 					
 					
 					
@@ -333,13 +376,35 @@ public class Game extends GameBase{
 						
 				}
 				
+				//wall collision
+				
+				for (Rect wall : walls) {
+					if (player.overlaps(wall)){ //use player speeds to push back
+						if (player.cameFromAbove()){
+							player.pushBy(0, 6);
+						}
+						
+						if (player.cameFromBelow()){
+							player.pushBy(0, -6);
+						}
+						
+						if (player.cameFromLeft()){
+							player.pushBy(-6, 0);
+						}
+						
+						if (player.cameFromRight()){
+							player.pushBy(6, 0);
+						}
+					}
+				}
+				
 				
 				//enemy collision
 				
 				collisionFrameCounter++; //increments frame counter for collision detection
 				
-				if (collisionFrameCounter == 100) {
-					collisionFrameCounter = 0; //reset frame counter for colllisions
+				if (collisionFrameCounter == 30) {
+					collisionFrameCounter = 0; //reset frame counter for collisions
 					for (int i = 0; i < enemies.size(); i++) { //get first enemy
 					    Enemy e1 = enemies.get(i);
 	
@@ -348,23 +413,25 @@ public class Game extends GameBase{
 	
 					        if (e1.overlaps(e2)) {
 	
-					            // Compute the pushback direction
-					            int dx = e1.x - e2.x;
-					            int dy = e1.y - e2.y;
-	
-					            // Normalize the direction to avoid diagonal stretching
-					            double dist = Math.sqrt(dx * dx + dy * dy);
-					            
-					            if (dist == 0) dist = 1; // avoid division by zero
-	
-					            double pushStrength = 5.0; // how strong the separation is
-	
-					            int pushX = (int)((dx / dist) * pushStrength);
-					            int pushY = (int)((dy / dist) * pushStrength);
-	
-					            e1.pushBy(pushX, pushY);
-					            e2.pushBy(-pushX, -pushY);
-					            
+					        	if (e1.cameFromAbove()){
+									e1.pushBy(0, 8);
+									e2.pushBy(0, -8);
+								}
+								
+								if (e1.cameFromBelow()){
+									e1.pushBy(0, -8);
+									e2.pushBy(0, 8);
+								}
+								
+								if (e1.cameFromLeft()){
+									e1.pushBy(-8, 0);
+									e2.pushBy(8, 0);
+								}
+								
+								if (e1.cameFromRight()){
+									e1.pushBy(8, 0);
+									e2.pushBy(-8, 0);
+								}
 					            
 					        }
 					    }
@@ -408,6 +475,11 @@ public class Game extends GameBase{
 				    }
 					if (sword.overlaps(enemy) || sword.contains(enemy.x, enemy.y)){	
 						enemy.health -= sword.Strength;
+						
+						SoundPlayer.playSound("hit_sound.wav");
+						
+						enemy.flashRed = true;
+						enemy.flashEndTime = currentTime + 200;
 					}
 					
 
@@ -423,42 +495,34 @@ public class Game extends GameBase{
 					
 					
 				    // Update bow position and hitbox based on direction
-				    bow.locked_pose = player.current_pose;
+				   
 				    bow.fireTime = currentTime;
 				    bow.midAir = true;
 				    framesSinceFired = 0;
-				    
+				    bow.current_pose = player.current_pose;
 					
 				    switch (bow.locked_pose) {
 				        case WeaponSprite.RT:
 					            bow.x = player.x + player.w;
 					            bow.y = player.y + player.h / 2 - bow.h / 2;
-					            bow.w = 200;
-					            bow.h = 100;
 					            bow.vx = 6;
 					            bow.vy = 0;
 				            break;
 				        case WeaponSprite.LT:
 					        	bow.x = player.x - 200;
 					        	bow.y = player.y + player.h / 2 - bow.h / 2;
-					        	bow.w = 200;
-					        	bow.h = 100;
 					        	bow.vx = -6;
 					            bow.vy = 0;
 				            break;
 				        case WeaponSprite.UP:
 					        	bow.x = player.x + player.w / 2 - bow.w / 2;
 					        	bow.y = player.y - 200;
-					        	bow.w = 100;
-					        	bow.h = 200;
 					        	bow.vx = 0;
 					            bow.vy = -6;
 				            break;
 				        case WeaponSprite.DN:
 				        	bow.x = player.x + player.w / 2 - bow.w / 2;
 				        	bow.y = player.y + player.h;
-				        	bow.w = 100;
-				        	bow.h = 200;
 				        	bow.vx = 0;
 				            bow.vy = 6;
 				            break;
@@ -477,12 +541,12 @@ public class Game extends GameBase{
 				    
 				    else {
 				    	
-				    	if (framesSinceFired >= 1){
+				    	//if (framesSinceFired >= 1){
 				        // Update arrow position
 					        bow.x += bow.vx;
 					        bow.y += bow.vy;
 					  
-				    	}
+				    	//}
 				        
 				        framesSinceFired++;
 				        
@@ -491,13 +555,101 @@ public class Game extends GameBase{
 				        
 					if (bow.overlaps(enemy) || bow.contains(enemy.x, enemy.y)){	
 						enemy.health -= bow.Strength;
+						
+						SoundPlayer.playSound("hit_sound.wav");
+						
+						enemy.flashRed = true;
+						enemy.flashEndTime = currentTime + 200;
 					}
 				
 			    }
 			}
 			    
-				if (currentTime >= bowAnimationEndTime) {  //set animating false
-					bowAnimating = false;
+			if (currentTime >= bowAnimationEndTime) {  //set animating false
+				bowAnimating = false;
+
+			}
+			
+			
+			//Axe logic
+			
+			if (axeAnimating && !axe.midAir) {
+				
+				//update bow's position timer
+				if (currentTime >= axePositionTimer) axePositionTimer = currentTime + axeAnimationEndTime;
+				
+				
+			    // Update axe position and hitbox based on direction
+			   
+			    axe.throwTime = currentTime;
+			    axe.midAir = true;
+			    framesSinceThrown = 0;
+			    axe.current_pose = player.current_pose;
+				
+			    switch (axe.locked_pose) {
+			        case WeaponSprite.RT:
+				            axe.x = player.x + player.w;
+				            axe.y = player.y + player.h / 2 - axe.h / 2;
+				            axe.vx = 1;
+			            break;
+			        case WeaponSprite.LT:
+				        	axe.x = player.x - 200;
+				        	axe.y = player.y + player.h / 2 - axe.h / 2;
+				        	axe.vx = -1;
+			            break;
+			        case WeaponSprite.UP:
+				        	axe.x = player.x + player.w / 2 - axe.w / 2;
+				        	axe.y = player.y - 200;
+				        	axe.vx = -1;
+			            break;
+				        case WeaponSprite.DN:
+				        	axe.x = player.x + player.w / 2 - axe.w / 2;
+				        	axe.y = player.y + player.h;
+				        	axe.vx = -1;
+				            break;
+			           
+			    	}
+				    
+
+					
+				}
+				
+			    if (axe.midAir) {
+				    if (currentTime - axe.throwTime > axe.flightDuration) { //stops arrow when timer expires
+				        axe.midAir = false;
+				    }
+				    
+				    
+				    else {
+				    	
+				    	if (framesSinceThrown >= 10){
+				        // Update axe position, increment vy to positive to create an arch
+					        axe.x += axe.vx; 
+					        axe.y += (axe.vy--);
+					  
+				    	}
+				        
+				        framesSinceThrown++;
+				        
+				        
+				        
+				        
+					if (axe.overlaps(enemy) || axe.contains(enemy.x, enemy.y)){	
+						enemy.health -= axe.Strength;
+						
+						SoundPlayer.playSound("hit_sound.wav");
+						
+						enemy.flashRed = true;
+						enemy.flashEndTime = currentTime + 200;
+					}
+				
+			    }
+			}
+			    
+				if (currentTime >= axeAnimationEndTime) {  //set animating false
+					axeAnimating = false;
+					axe.vy = 10;
+
 				}
 		   
 				
@@ -506,7 +658,7 @@ public class Game extends GameBase{
 			
 			
 			
-			//weapon activation checks
+			
 			
 			//level check
 			if (exp >= scaledLevelUpExpNeeded && (!levelUpWaiting)) {
@@ -516,6 +668,11 @@ public class Game extends GameBase{
 				
 			}
 			
+			
+			if (player != null && player.health <= 0) {
+				player = null;
+				gameOver  = true;
+			}
 			
 		} //end of player death check
 	}
@@ -535,12 +692,14 @@ public class Game extends GameBase{
 	
 	
 	public void chooseReward(int index) {
-		if (index >= 0 && index < levelUpChoices.length) {
-			levelUpChoices[index].chosenReward1.run();
+		
+		if (index >= 0 && index < displayedChoices.length) {
+			displayedChoices[index].chosenReward.run();
 			levelUpWaiting = false;
+			rewardsRandomized = 0;
 			
 			//scale exp requirement
-			scaledLevelUpExpNeeded = (int)(baseLevelUpExpNeeded * Math.pow(1.2, currentLevel));
+			scaledLevelUpExpNeeded = (int)(baseLevelUpExpNeeded * Math.pow(1.3, currentLevel));
 
 		}
 	}
@@ -557,25 +716,37 @@ public class Game extends GameBase{
 				
 				
 				if (c == 'A') pen.drawImage(tile[0], j * size - camX, i * size - camY, size, size, null);
-				if (c == 'W') pen.drawImage(tile[1], j * size - camX, i * size - camY, size, size, null);
+				if (c == 'W') {
+					pen.drawImage(tile[1], j * size - camX, i * size - camY, size, size, null); //these are walls
+					if (!wallsBuilt) walls.add(new Rect(j * size, i * size, size, size)); //don't use camX, camY. Need world coordinates.
+				}
 
 			}
 		}
+		
+		wallsBuilt = true; //no more walls objects built after loop finishes
 		
 		
 		if (player!= null) {  //no drawing if player is dead
 			
 			//draw level up menu
 			if (levelUpWaiting) {
+				if (rewardsRandomized <= 3){
+				    for (int i = 0; i < displayedChoices.length; i++) {
+						displayedChoices[i] = levelUpChoices[(int)(Math.random() * (levelUpChoices.length))]; //picks 3 random choices from rewards pool
+						rewardsRandomized++;
+				    }
+				}
+			    	
 			    pen.setColor(new Color(0, 0, 0, 200)); // semi-transparent overlay
 			    pen.fillRect(0, 0, screenWidth, screenHeight);
 
 			    pen.setColor(Color.WHITE);
 			    pen.setFont(new Font("Arial", Font.BOLD, 40));
-			    pen.drawString("Level Up! Choose a Reward:", screenWidth / 2 - 250, 200);
-
-			    for (int i = 0; i < levelUpChoices.length; i++) {
-			        Reward r = levelUpChoices[i];
+			    pen.drawString("Level Up!", screenWidth / 2 - 250, 200);
+			    
+			    for (int i = 0; i < displayedChoices.length; i++) {
+			        Reward r = displayedChoices[i];
 			        pen.drawString((i + 1) + ". " + r.name, screenWidth / 2 - 200, 300 + i * 100);
 			    }
 			}
@@ -597,9 +768,9 @@ public class Game extends GameBase{
 					
 					//draw enemy health
 					
-					int barWidth = 50;
+					int barWidth = 40;
 					int barHeight = 6;
-					int healthBarX = enemy.x - camX + (enemy.w / 2) - (barWidth / 2);
+					int healthBarX = enemy.x - camX + (((enemy.w + Sprite.sizeOffset) / 2) ) - (barWidth / 2); //add 25 back, offset from sprite
 					int healthBarY = enemy.y - camY - 10;
 					
 					
@@ -661,6 +832,21 @@ public class Game extends GameBase{
 				
 			}
 			
+			for (Enemy enemy : enemies) {
+				if (enemy.flashRed) {
+					int index = (int)(Math.random() * 3); // gives 0, 1, or 2
+					pen.drawImage(Toolkit.getDefaultToolkit().getImage("hit_" + String.valueOf(index) + ".png"), enemy.x - 20 - camX, enemy.y -camY, 100, 100, null); //draws hit indicator on player
+				}
+				
+				if(enemy.flashRed && currentTime > enemy.flashEndTime) { //stop red flash
+					enemy.flashRed = false;
+					
+			}
+					
+				
+			}
+			
+			
 			//weapon drawing logic
 			
 			
@@ -668,6 +854,7 @@ public class Game extends GameBase{
 			if(swordActive) { //check if sword is active
 				
 				if (currentTime >= swordActivationTimer + Sword.weaponDelay) {		
+					SoundPlayer.playSound("sword_sfx.wav"); // play sound
 					sword.animation.reset();
 					swordAnimating = true;
 					swordAnimationEndTime = currentTime + sword.animation.numFrames * sword.animation.duration;
@@ -692,7 +879,8 @@ public class Game extends GameBase{
 			
 		if(bowActive) { //check if bow is active
 				
-				if (currentTime >= bowActivationTimer + Bow.weaponDelay) {		
+				if (currentTime >= bowActivationTimer + Bow.weaponDelay) {	
+					SoundPlayer.playSound("shoot.wav");
 					bow.animation.reset();
 					bowAnimating = true;
 					bowAnimationEndTime = currentTime + bow.animation.numFrames * bow.animation.duration;
@@ -702,26 +890,54 @@ public class Game extends GameBase{
 				if (bowAnimating || bow.midAir) {
 					bow.draw(pen, camX, camY);
 					
-					
-					
 
 				}
 				
 				
 			} //end of bow logic
+		
+		if(axeActive) { //check if axe is active
 			
-		}
-		
-		
+			if (currentTime >= axeActivationTimer + Axe.weaponDelay) {	
+				SoundPlayer.playSound("sword2.wav");
+				axe.animation.reset();
+				axeAnimating = true;
+				axeAnimationEndTime = currentTime + axe.animation.numFrames * axe.animation.duration;
+				axeActivationTimer = currentTime;
+			}
+			
+			if (axeAnimating || axe.midAir) {
+				axe.draw(pen, camX, camY);
+				
+				
+				
 
+			}
+			
+			
+		} //end of axe logic
+			
 		
 		
+	} //end of player death check
 		
-		//handle player death
+	if (gameOver) {
 		
-		if (player != null && player.health <= 0) {
-			player = null;
+	    pen.setColor(new Color(0, 0, 0, 200)); // semi-transparent overlay
+	    pen.fillRect(0, 0, screenWidth, screenHeight);
+
+	    pen.setColor(Color.WHITE);
+	    pen.setFont(new Font("Arial", Font.BOLD, 100));
+	    pen.drawString("GAME OVER!", screenWidth / 2 - 250, 200);
+	    pen.drawString("you died on round " + String.valueOf(roundNumber) , screenWidth / 2 - 250, 400);
+	    pen.drawString("and took down " + String.valueOf(enemiesKilledTotal), screenWidth / 2 - 250, 600);
+	    pen.drawString("enemies with you" , screenWidth / 2 - 250, 800);
+
 		}
+		
+		
+	
+
 		
 
 		
@@ -741,20 +957,23 @@ public class Game extends GameBase{
 			tile[i] = Toolkit.getDefaultToolkit().getImage("tile" + (i+1) + ".png");
 		}
 		
-		sword = new Sword(player.x, player.y, 9);  //start with sword as default
+		sword = new Sword(player.x, player.y, 9, false);  //start with sword as default
 		weapons.add(sword);
 		
-		bow = new Bow(player.x, player.y, 9);
+		bow = new Bow(player.x, player.y, 4, true);
 		weapons.add(bow);
+		
+		axe = new Axe(player.x, player.y, 4, true);
+		weapons.add(axe);
 		
 		//load up reward list
 		
 		 levelUpChoices[0] = (new Reward("Heal 100 HP", () -> player.health += 100));
 		 levelUpChoices[1] = (new Reward("Activate Bow", () -> bowActive = true));
-		 levelUpChoices[2] = (new Reward("Increase Sword Damage", () -> sword.Strength *= 1.10));
-		 levelUpChoices[3] = (new Reward("Decrease Sword delay", () -> sword.weaponDelay *= 0.90));
-		 levelUpChoices[4] = (new Reward("Decrease Bow delay", () -> bow.weaponDelay *= 0.90, () -> bow.fireTime *= 0.90));
-		 levelUpChoices[5] = (new Reward("Increase Bow Strenght", () -> bow.Strength *= 1.10));
+		 levelUpChoices[2] = (new Reward("Activate Axe", () -> axeActive = true));
+		 levelUpChoices[3] = (new Reward("Increase Sword Damage", () -> sword.Strength *= 1.10));
+		 levelUpChoices[4] = (new Reward("Decrease Sword delay", () -> sword.weaponDelay *= 0.90));
+		 levelUpChoices[5] = (new Reward("Increase Bow Strength", () -> bow.Strength *= 1.10));
 		
 	}
 

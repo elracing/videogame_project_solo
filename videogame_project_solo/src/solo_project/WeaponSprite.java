@@ -23,7 +23,7 @@ public class WeaponSprite extends Rect{
 	
 	
 	
-	public WeaponSprite (String name, int x, int y, int w, int h, int numFrames, int duration) {
+	public WeaponSprite (String name, int x, int y, int w, int h, int numFrames, int duration, boolean loopable) {
 		
 		
 		super(x, y, w ,h);
@@ -31,7 +31,7 @@ public class WeaponSprite extends Rect{
 		this.weaponName = name;
 		
 		
-			animation = new WeaponAnimation(name, numFrames , duration);
+			animation = new WeaponAnimation(name, numFrames , duration, loopable);
 			
 		
 																	
@@ -46,24 +46,24 @@ public class WeaponSprite extends Rect{
 		
 		
 	    if (current_pose == RT) {
-	        g2d.drawImage(img, x - camX, y - camY, w, h, null);
+	        g2d.drawImage(img, x - camX, y - camY, w + Sprite.sizeOffset, h + Sprite.sizeOffset, null);
 	    }
 
 	    if (current_pose == LT) {
-	        g2d.drawImage(img, x + w - camX, y - camY, -w, h, null); // mirror horizontally
+	        g2d.drawImage(img, x + (w + Sprite.sizeOffset) - camX, y - camY, (-w -Sprite.sizeOffset), h + Sprite.sizeOffset, null); // mirror horizontally
 	    }
 
 	    if (current_pose == UP) {
-	        g2d.translate(x - camX + w / 2, y - camY + h / 2); // move to center
+	        g2d.translate(x - camX + (w + Sprite.sizeOffset) / 2, y - camY + (h + Sprite.sizeOffset) / 2); // move to center
 	        g2d.rotate(Math.toRadians(-90));     // rotate -90 degrees
-	        g2d.drawImage(img, -w / 2, -h / 2, w, h, null); // draw centered
+	        g2d.drawImage(img, (-w - Sprite.sizeOffset) / 2, (-h - Sprite.sizeOffset) / 2, w + Sprite.sizeOffset, h + Sprite.sizeOffset, null); // draw centered
 	        g2d.setTransform(old); // reset
 	    }
 
 	    if (current_pose == DN) {
-	        g2d.translate(x - camX + w / 2, y - camY + h / 2); // move to center
+	        g2d.translate(x - camX + (w + Sprite.sizeOffset) / 2, y - camY + (h + Sprite.sizeOffset) / 2); // move to center
 	        g2d.rotate(Math.toRadians(90));     // rotate 90 degrees
-	        g2d.drawImage(img, -w / 2, -h / 2, w, h, null); // draw centered
+	        g2d.drawImage(img, (-w - Sprite.sizeOffset) / 2, (-h - Sprite.sizeOffset) / 2, w + Sprite.sizeOffset, h + Sprite.sizeOffset, null); // draw centered
 	        g2d.setTransform(old); // reset
 	    }
 	}

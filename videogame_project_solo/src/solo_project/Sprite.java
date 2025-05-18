@@ -13,6 +13,7 @@ public class Sprite extends Rect{
 		final public static int DN = 1;
 		final public static int LT = 2;
 		final public static int RT = 3;
+		public static final int sizeOffset = 50;
 		
 		int current_pose = DN;
 		
@@ -36,11 +37,11 @@ public class Sprite extends Rect{
 		public void draw(Graphics pen, int camX, int camY) {
 			
 			if(moving) {
-				pen.drawImage(animation[current_pose].nextImage(), x - camX, y - camY, w, h, null);
+				pen.drawImage(animation[current_pose].nextImage(), x - camX, y - camY, w + 50, h + sizeOffset, null);
 			}
 			
 			else {
-				pen.drawImage(animation[current_pose].stillImage(), x - camX, y -camY, w, h,  null);
+				pen.drawImage(animation[current_pose].stillImage(), x - camX , y -camY, w + 50 , h + sizeOffset,  null);
 				
 				moving = false;
 			}

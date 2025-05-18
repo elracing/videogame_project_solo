@@ -16,8 +16,9 @@ public class Bow extends WeaponSprite{
 	int locked_pose = WeaponSprite.RT; //locks pose
 	
 	
-	public Bow(int x, int y, int numFrames) {
-		super("arrow", x, y, 200, 200 , numFrames, 250);
+	
+	public Bow(int x, int y, int numFrames, boolean loopable) {
+		super("arrow", x, y, 200, 200 , numFrames, 150, loopable);
 	}
 
 }

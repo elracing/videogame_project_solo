@@ -10,8 +10,9 @@ public class WeaponAnimation {
 	int duration; //in ms
 	int numFrames;
 	long lastFrameTime = 0;
+	boolean loopable; //flag for animation looping
 	
-	public WeaponAnimation(String name, int numFrames, int duration)
+	public WeaponAnimation(String name, int numFrames, int duration, boolean loopable)
 	{
 		image = new Image[numFrames];
 		
@@ -22,6 +23,7 @@ public class WeaponAnimation {
 		this.duration = duration;
 		this.numFrames = numFrames;
 		this.lastFrameTime = System.currentTimeMillis();
+		this.loopable = loopable;
 		
 	}
 	
@@ -33,7 +35,15 @@ public class WeaponAnimation {
 			current++;
 			lastFrameTime = now;  //reset last frame time
 			
-			if(current >= image.length) current = image.length - 1; //stay on last frame
+			if(current >= image.length) {
+				
+					if(loopable) {
+						current = 1; //stay on last frame
+					}
+					else {
+						current = image.length - 1; //stay on last frame
+					}
+			}
 		    
 		}
 		
