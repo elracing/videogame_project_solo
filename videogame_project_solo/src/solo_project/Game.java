@@ -548,7 +548,7 @@ public class Game extends GameBase{
 					  
 				    	//}
 				        
-				        framesSinceFired++;
+				        //framesSinceFired++;
 				        
 				        
 				        

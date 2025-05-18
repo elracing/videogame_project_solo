@@ -7,7 +7,7 @@ import java.awt.Toolkit;
 public class Sword extends WeaponSprite{
 	
 	final int numFrames = 9;
-	int Strength = 30;
+	int Strength = 15;
 	public static long weaponDelay = 1200; //weapon damage delay in milliseconds
 	static String[] pose = {"up", "dn", "lt", "rt"};
 	

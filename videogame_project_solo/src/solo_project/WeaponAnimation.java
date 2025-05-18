@@ -38,7 +38,7 @@ public class WeaponAnimation {
 			if(current >= image.length) {
 				
 					if(loopable) {
-						current = 1; //stay on last frame
+						current = 1; //loop
 					}
 					else {
 						current = image.length - 1; //stay on last frame
