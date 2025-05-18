@@ -11,8 +11,8 @@ public abstract class GameBase extends Applet implements Runnable, KeyListener {
     Image offScreen;
     Graphics offScreen_pen;
     Thread t;
-	int screenWidth = 2736;
-	int screenHeight = 1824;
+	int screenWidth = 2560; //CHANGE YOUR RESOLUTIONS HERE
+	int screenHeight = 1440;
     static boolean[] pressing = new boolean[1024];
     public static final int UP = 38;
     public static final int DN = 40;

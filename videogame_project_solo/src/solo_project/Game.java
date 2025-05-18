@@ -837,11 +837,11 @@ public class Game extends GameBase{
 			
 			
 			//draw game timer
-			pen.drawString(String.valueOf(currentTimeSeconds), 1300, 40); 
+			pen.drawString(String.valueOf(currentTimeSeconds), screenWidth / 2, 40); 
 			
 			// draw round number
 			
-			pen.drawString("Round " + roundNumber, 2500, 40);
+			pen.drawString("Round " + roundNumber, screenWidth - 200, 40);
 			
 			//draw player level
 			pen.drawString("lv " + String.valueOf(currentLevel), 20, 80);
@@ -861,6 +861,7 @@ public class Game extends GameBase{
 			
 			synchronized(enemies) {
 				for (Enemy enemy : enemies) {
+					if (enemy == null) continue; //avoid null
 					if (enemy.flashRed) {
 						int index = (int)(Math.random() * 3); // gives 0, 1, or 2
 						pen.drawImage(Toolkit.getDefaultToolkit().getImage("hit_" + String.valueOf(index) + ".png"), enemy.x - 20 - camX, enemy.y -camY, 100, 100, null); //draws hit indicator on player
