@@ -207,17 +207,17 @@ public class Game extends GameBase{
 				    
 				    switch(result) {
 				    
-				    case 1:  enemiesToAdd.add(new Skeleton("skeleton", spawnX, spawnY, 100 * (int)Math.pow(1.3, roundNumber), 10, 100, 100));
+				    case 1:  enemiesToAdd.add(new Skeleton("skeleton", spawnX, spawnY, 100 * (int)Math.pow(1.3, roundNumber), 10, 100 * (int)Math.pow(1.3, roundNumber), 100));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
 				    
-				    case 2:  enemiesToAdd.add(new Skeleton("skeleton_red_eye", spawnX, spawnY, 200 * (int)Math.pow(1.3, roundNumber), 15, 200, 200));
+				    case 2:  enemiesToAdd.add(new Skeleton("skeleton_red_eye", spawnX, spawnY, 200 * (int)Math.pow(1.3, roundNumber), 15, 200 * (int)Math.pow(1.3, roundNumber), 200));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
 				    
-				    case 3:  enemiesToAdd.add(new Skeleton("skeleton_red", spawnX, spawnY, 300 * (int)Math.pow(1.3, roundNumber), 35, 300, 300));
+				    case 3:  enemiesToAdd.add(new Skeleton("skeleton_red", spawnX, spawnY, 300 * (int)Math.pow(1.3, roundNumber), 35, 300 * (int)Math.pow(1.3, roundNumber), 300));
 				    enemyCount++;
 				    enemiesSpawned++;
 				    break;
